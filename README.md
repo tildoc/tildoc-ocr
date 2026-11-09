@@ -1,21 +1,16 @@
 # tildoc-ocr
 
-Text extraction and OCR for [tildoc](https://github.com/tildoc/tildoc), as two plugins in one program:
+OCR for [tildoc](https://github.com/tildoc/tildoc): recognises scanned PDFs with ocrmypdf and Tesseract and adds a searchable PDF as a variant. Reading text is left to [tildoc-text](https://github.com/tildoc/tildoc-text), including the text of that variant.
 
-| Plugin | Does |
-|---|---|
-| `tildoc-text` | Text of plain-text files and text embedded in PDFs |
-| `tildoc-ocr` | Recognises scanned pages with ocrmypdf and Tesseract, adds a searchable PDF |
-
-It talks to tildoc only through the plugin REST API. It needs no database and no master key.
+It talks to tildoc only through the plugin REST API and needs no database and no master key.
 
 ## Environment
 
 | Variable | Meaning |
 |---|---|
 | `TILDOC_URL` | Address of the tildoc server, e.g. `http://server:8080` |
-| `TILDOC_TEXT_TOKEN`, `TILDOC_OCR_TOKEN` | The tokens from the plugin manifests |
-| `TILDOC_OCR_CONCURRENCY` | Files at a time per plugin, default 2 |
+| `TILDOC_OCR_TOKEN` | The token from the plugin manifest |
+| `TILDOC_OCR_CONCURRENCY` | Files at a time, default 2 |
 
 ## Languages
 

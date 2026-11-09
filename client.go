@@ -20,21 +20,15 @@ type job struct {
 	SHA256      string         `json:"sha256"`
 	MIME        string         `json:"mime"`
 	ContentPath string         `json:"content_path"`
+	TextPath    string         `json:"text_path"`
 	Force       bool           `json:"force"`
-	OwnVariant  bool           `json:"own_variant"` // this content is a variant one of ours made
+	VariantOf   string         `json:"variant_of"` // this content is a variant of that file
 	Settings    map[string]any `json:"settings"`
-}
-
-type fact struct {
-	Label string `json:"label"`
-	Value string `json:"value"`
 }
 
 // results are what a job reports.
 type results struct {
-	Status string  `json:"status"` // done | partial | unsupported
-	Facts  []fact  `json:"facts,omitempty"`
-	Text   *string `json:"text,omitempty"`
+	Status string `json:"status"` // done | partial | unsupported
 }
 
 // client talks to tildoc as one plugin.
@@ -105,6 +99,30 @@ func (c *client) fetch(ctx context.Context, j job, path string) error {
 		return err
 	}
 	return f.Close()
+}
+
+// text returns the extracted text of a job's file; "" if there is none yet.
+func (c *client) text(ctx context.Context, j job) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+j.TextPath, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return "", nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("text: %d", resp.StatusCode)
+	}
+	var out struct {
+		Text string `json:"text"`
+	}
+	return out.Text, json.NewDecoder(resp.Body).Decode(&out)
 }
 
 // variant describes a derived file.

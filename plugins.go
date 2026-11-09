@@ -3,63 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
-
-func textFact(kind string, pages int) []fact {
-	f := []fact{{Label: "fact.kind", Value: "kind." + kind}}
-	if pages > 0 {
-		f = append(f, fact{Label: "fact.pages", Value: strconv.Itoa(pages)})
-	}
-	return f
-}
-
-// runText is the tildoc-text plugin.
-func runText(ctx context.Context, j job, path string) (results, error) {
-	head, err := readHead(path, 8192)
-	if err != nil {
-		return results{}, err
-	}
-	if j.MIME != "application/pdf" {
-		if !looksLikeText(head) {
-			return results{Status: "unsupported"}, nil
-		}
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return results{}, err
-		}
-		if len(b) > maxTextBytes {
-			b = b[:maxTextBytes]
-		}
-		text := string(b)
-		return results{Status: "done", Facts: textFact("text", 0), Text: &text}, nil
-	}
-	text, err := pdfText(ctx, path)
-	if err != nil {
-		return results{}, err
-	}
-	pages, empty := pageStats(text)
-	kind := "pdf-digital"
-	switch {
-	case j.OwnVariant:
-		kind = "pdf-own"
-	case empty == pages:
-		kind = "pdf-scanned"
-	case empty > 0:
-		kind = "pdf-mixed"
-	case foreignOCR(ctx, path, pages):
-		kind = "pdf-ocred"
-	}
-	r := results{Status: "done", Facts: textFact(kind, pages)}
-	if strings.TrimSpace(text) != "" {
-		r.Text = &text
-	}
-	return r, nil
-}
 
 func settingString(j job, key, def string) string {
 	if v, ok := j.Settings[key].(string); ok && v != "" {
@@ -95,10 +42,10 @@ func languages(j job, have []string) string {
 
 // runOCR is the tildoc-ocr plugin.
 func runOCR(ctx context.Context, c *client, j job, path, dir string) (results, error) {
-	if j.OwnVariant { // our own result used as content again: nothing to recognise
+	if j.VariantOf != "" { // a variant used as content again: nothing to recognise
 		return results{Status: "unsupported"}, nil
 	}
-	text, err := pdfText(ctx, path)
+	text, err := c.text(ctx, j)
 	if err != nil {
 		return results{}, err
 	}
@@ -134,24 +81,17 @@ func runOCR(ctx context.Context, c *client, j job, path, dir string) (results, e
 		Meta: map[string]any{"langs": langs}}, nil, langs, useOurs)
 }
 
-// recognise runs ocrmypdf and uploads the result; ownText: its text becomes the search text.
+// recognise runs ocrmypdf and uploads the result; ownText: tildoc-text's reading
+// of it becomes the search text.
 func recognise(ctx context.Context, c *client, j job, in, dir string, v variant, extra []string, langs string, ownText bool) (results, error) {
 	out := filepath.Join(dir, "out.pdf")
 	args := append(append([]string{}, extra...), "--output-type", "pdf", "--jobs", "1", "--quiet", "-l", langs, in, out)
 	if _, err := run(ctx, "ocrmypdf", args...); err != nil {
 		return results{}, err
 	}
-	text, err := pdfText(ctx, out)
-	if err != nil {
-		return results{}, err
-	}
 	v.Engine, v.ProvidesText = ocrEngine(ctx), ownText
 	if _, err := c.putVariant(ctx, j, v, out); err != nil {
 		return results{}, err
 	}
-	r := results{Status: "done"}
-	if ownText {
-		r.Text = &text
-	}
-	return r, nil
+	return results{Status: "done"}, nil
 }

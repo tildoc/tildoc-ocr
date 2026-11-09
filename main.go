@@ -1,4 +1,4 @@
-// Command tildoc-ocr provides tildoc's text extraction and OCR as plugins.
+// Command tildoc-ocr recognises scanned PDFs for tildoc.
 package main
 
 import (
@@ -67,9 +67,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	base := os.Getenv("TILDOC_URL")
-	textToken, ocrToken := os.Getenv("TILDOC_TEXT_TOKEN"), os.Getenv("TILDOC_OCR_TOKEN")
-	if base == "" || textToken == "" || ocrToken == "" {
-		slog.Error("TILDOC_URL, TILDOC_TEXT_TOKEN and TILDOC_OCR_TOKEN are required")
+	ocrToken := os.Getenv("TILDOC_OCR_TOKEN")
+	if base == "" || ocrToken == "" {
+		slog.Error("TILDOC_URL and TILDOC_OCR_TOKEN are required")
 		os.Exit(1)
 	}
 	n, err := strconv.Atoi(os.Getenv("TILDOC_OCR_CONCURRENCY"))
@@ -77,7 +77,6 @@ func main() {
 		n = 2
 	}
 	httpc := &http.Client{Timeout: 30 * time.Minute}
-	text := &client{base: base, token: textToken, http: httpc}
 	ocr := &client{base: base, token: ocrToken, http: httpc}
 	go ocr.publishSettings(ctx, []setting{
 		{Key: "languages", Type: "multiselect", Options: availableLanguages(), Default: availableLanguages()},
@@ -85,12 +84,8 @@ func main() {
 		{Key: "redo_foreign", Type: "bool", Default: true},
 	})
 	var wg sync.WaitGroup
-	textHandler := func(ctx context.Context, _ *client, j job, path, _ string) (results, error) {
-		return runText(ctx, j, path)
-	}
 	for range n {
-		wg.Add(2)
-		go func() { defer wg.Done(); worker(ctx, text, textHandler, "tildoc-text") }()
+		wg.Add(1)
 		go func() { defer wg.Done(); worker(ctx, ocr, runOCR, "tildoc-ocr") }()
 	}
 	slog.Info("tildoc-ocr started", "workers", n, "languages", availableLanguages())

@@ -2,7 +2,7 @@
   "name": "tildoc-ocr",
   "priority": 100,
   "access": "open",
-  "changes": ["text", "facts", "variant"],
+  "changes": ["variant"],
   "mime": ["application/pdf"],
   "concurrency": 2,
   "default_enabled": true,

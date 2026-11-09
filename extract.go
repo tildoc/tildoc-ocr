@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,11 +12,10 @@ import (
 	"strings"
 	"sync"
 	"unicode"
-	"unicode/utf8"
 )
 
 const (
-	maxTextBytes = 64 << 20
+	maxOutput    = 64 << 20
 	minPageChars = 10 // below this a PDF page counts as having no text layer
 )
 
@@ -25,7 +23,7 @@ const (
 func run(ctx context.Context, name string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &limited{buf: &stdout, max: 2 * maxTextBytes}
+	cmd.Stdout = &limited{buf: &stdout, max: 2 * maxOutput}
 	cmd.Stderr = &limited{buf: &stderr, max: 64 << 10}
 	cmd.Env = append(os.Environ(), "OMP_THREAD_LIMIT=1")
 	if err := cmd.Run(); err != nil {
@@ -54,40 +52,6 @@ func (l *limited) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func readHead(path string, n int) ([]byte, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	buf := make([]byte, n)
-	m, err := io.ReadFull(f, buf)
-	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {
-		return nil, err
-	}
-	return buf[:m], nil
-}
-
-// looksLikeText accepts UTF-8 text without NUL bytes and few control characters.
-func looksLikeText(b []byte) bool {
-	if len(b) == 0 || bytes.IndexByte(b, 0) >= 0 {
-		return false
-	}
-	for i := 0; i < 4 && !utf8.Valid(b) && len(b) > 0; i++ {
-		b = b[:len(b)-1] // a rune cut at the end of the sample
-	}
-	if !utf8.Valid(b) {
-		return false
-	}
-	ctrl := 0
-	for _, r := range string(b) {
-		if r < 32 && r != '\n' && r != '\r' && r != '\t' && r != '\f' {
-			ctrl++
-		}
-	}
-	return ctrl*50 < len(b)
-}
-
 // pageStats splits pdftotext output and counts pages without a usable text layer.
 func pageStats(text string) (pages, empty int) {
 	parts := strings.Split(text, "\f")
@@ -106,11 +70,6 @@ func pageStats(text string) (pages, empty int) {
 		}
 	}
 	return len(parts), empty
-}
-
-func pdfText(ctx context.Context, path string) (string, error) {
-	out, err := run(ctx, "pdftotext", "-q", "-enc", "UTF-8", path, "-")
-	return string(out), err
 }
 
 var pdfinfoPage = regexp.MustCompile(`(?m)^Page\s+(\d+)\s+size:\s+([\d.]+)\s+x\s+([\d.]+)\s+pts`)
