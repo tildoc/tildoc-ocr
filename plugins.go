@@ -45,11 +45,7 @@ func runOCR(ctx context.Context, c *client, j job, path, dir string) (results, e
 	if j.VariantOf != "" { // a variant used as content again: nothing to recognise
 		return results{Status: "unsupported"}, nil
 	}
-	text, err := c.text(ctx, j)
-	if err != nil {
-		return results{}, err
-	}
-	pages, empty := pageStats(text)
+	pages, empty := pageStats(j.Text)
 	langs := languages(j, availableLanguages())
 	if empty > 0 {
 		if _, err := exec.LookPath("ocrmypdf"); err != nil {

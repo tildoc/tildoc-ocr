@@ -6,7 +6,9 @@
   "mime": ["application/pdf"],
   "concurrency": 2,
   "default_enabled": true,
-  "token_env": "TILDOC_OCR_TOKEN",
+  "url": "http://ocr:8000",
+  "url_env": "TILDOC_OCR_URL",
+  "needs_text": true,
   "labels": {
     "en-us": {
       "name": "tildoc OCR",

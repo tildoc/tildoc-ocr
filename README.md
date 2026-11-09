@@ -8,9 +8,9 @@ It talks to tildoc only through the plugin REST API and needs no database and no
 
 | Variable | Meaning |
 |---|---|
+| `PLUGIN_LISTEN` | Where it takes jobs, default `:8000` |
 | `TILDOC_URL` | Address of the tildoc server, e.g. `http://server:8080` |
-| `TILDOC_OCR_TOKEN` | The token from the plugin manifest |
-| `TILDOC_OCR_CONCURRENCY` | Files at a time, default 2 |
+| `PLUGIN_CONCURRENCY` | Files at a time, default 2 |
 
 ## Languages
 
@@ -21,3 +21,5 @@ docker build --build-arg OCR_LANGS=eng,deu .
 ```
 
 Licence: GNU AGPL-3.0-only, like tildoc.
+
+The program holds no credential. tildoc hands it each job with the file and a token that can only deliver the result of that job.
