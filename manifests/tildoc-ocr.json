@@ -1,0 +1,27 @@
+{
+  "name": "tildoc-ocr",
+  "priority": 100,
+  "access": "open",
+  "changes": ["text", "facts", "variant"],
+  "mime": ["application/pdf"],
+  "concurrency": 2,
+  "default_enabled": true,
+  "token_env": "TILDOC_OCR_TOKEN",
+  "labels": {
+    "en-us": {
+      "name": "tildoc OCR",
+      "opt_out": "No tildoc OCR",
+      "opt_out_help": "tildoc adds no OCR version and no image-only variant to files here. Originals are never changed, and text already embedded stays searchable.",
+      "variant.searchable_pdf": "tildoc OCR",
+      "variant.image_only_pdf": "Image only",
+      "description.skip_text": "Pages without text recognised",
+      "description.full": "All pages recognised",
+      "description.text_removed": "Existing text removed",
+      "setting.languages": "Languages",
+      "setting.preference": "Text used for search",
+      "setting.preference.existing": "Existing OCR in the file",
+      "setting.preference.tildoc": "tildoc OCR",
+      "setting.redo_foreign": "Recognise files that already have someone else's OCR"
+    }
+  }
+}
