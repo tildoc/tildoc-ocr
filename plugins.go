@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -94,15 +93,6 @@ func languages(j job, have []string) string {
 	return strings.Join(out, "+")
 }
 
-func fileSHA(path string) (string, error) {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	s := sha256.Sum256(b)
-	return hex.EncodeToString(s[:]), nil
-}
-
 // runOCR is the tildoc-ocr plugin.
 func runOCR(ctx context.Context, c *client, j job, path, dir string) (results, error) {
 	if j.OwnVariant { // our own result used as content again: nothing to recognise
@@ -115,6 +105,9 @@ func runOCR(ctx context.Context, c *client, j job, path, dir string) (results, e
 	pages, empty := pageStats(text)
 	langs := languages(j, availableLanguages())
 	if empty > 0 {
+		if _, err := exec.LookPath("ocrmypdf"); err != nil {
+			return results{Status: "partial"}, nil // nothing can be recognised here
+		}
 		return recognise(ctx, c, j, path, dir, variant{Kind: "searchable_pdf", Input: j.SHA256, Description: "description.skip_text",
 			Meta: map[string]any{"langs": langs}}, []string{"--skip-text"}, langs, true)
 	}
